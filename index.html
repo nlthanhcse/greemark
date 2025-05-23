@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Greenmart</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+            
+            body {
+                font-family: 'Montserrat', sans-serif;
+                background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+                min-height: 100vh;
+            }
+            
+            .province {
+                fill: #38bdf8;
+                stroke: #ffffff;
+                stroke-width: 0.5;
+                transition: all 0.3s;
+                cursor: pointer;
+                filter: drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.1));
+            }
+            
+            .province:hover {
+                fill: #0ea5e9;
+                transform: translateY(-2px);
+                filter: drop-shadow(0px 3px 3px rgba(0, 0, 0, 0.2));
+            }
+            
+            .province.visited {
+                fill: #8b5cf6;
+            }
+            
+            .province-label {
+                font-size: 3.5px;
+                font-weight: 600;
+                fill: #1e293b;
+                pointer-events: none;
+                text-anchor: middle;
+            }
+            
+            .island-label {
+                font-size: 6px;
+                font-weight: bold;
+                fill: #1e40af;
+            }
+            
+            .map-container {
+                position: relative;
+                border-radius: 1rem;
+                overflow: hidden;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            }
+            
+            .island-box {
+                position: absolute;
+                border: 2px solid #818cf8;
+                border-radius: 8px;
+                padding: 8px;
+                background-color: rgba(255, 255, 255, 0.95);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            }
+            
+            .memory-card {
+                transition: all 0.3s ease;
+            }
+            
+            .memory-card:hover {
+                transform: translateY(-5px);
+            }
+            
+            .btn {
+                transition: all 0.3s ease;
+            }
+            
+            .btn:hover {
+                transform: translateY(-2px);
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                border-radius: 4px;
+                margin-right: 8px;
+            }
+            
+            .vietnam-outline {
+                fill: none;
+                stroke: #0c4a6e;
+                stroke-width: 0.5;
+                stroke-dasharray: 5,3;
+                pointer-events: none;
+            }
+            
+            .tooltip {
+                position: absolute;
+                padding: 8px 12px;
+                background: white;
+                border-radius: 6px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                font-size: 14px;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.3s;
+                z-index: 10;
+                border: 1px solid #e2e8f0;
+            }
+            
+            .province-list {
+                max-height: 200px;
+                overflow-y: auto;
+                scrollbar-width: thin;
+                scrollbar-color: #cbd5e1 #f1f5f9;
+            }
+            
+            .province-list::-webkit-scrollbar {
+                width: 6px;
+            }
+            
+            .province-list::-webkit-scrollbar-track {
+                background: #f1f5f9;
+            }
+            
+            .province-list::-webkit-scrollbar-thumb {
+                background-color: #cbd5e1;
+                border-radius: 3px;
+            }
+            
+            .province-list-item {
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .province-list-item:hover {
+                background-color: #f0f9ff;
+            }
+            
+            .province-list-item.visited {
+                background-color: #ede9fe;
+            }
+            
+            .region-title {
+                font-size: 8px;
+                font-weight: bold;
+                fill: #1e293b;
+                text-anchor: middle;
+            }
+            
+            .region-outline {
+                fill: none;
+                stroke: #64748b;
+                stroke-width: 0.3;
+                stroke-dasharray: 2,1;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container mx-auto px-4 py-8 max-w-7xl">
+            <header class="text-center mb-8">
+                <h1 class="text-5xl font-bold text-indigo-800 mb-3">Vietnam Travel Memories</h1>
+                <p class="text-xl text-gray-600">Explore, click, and record your journey through Vietnam's 63 provinces</p>
+            </header>
+    
+            <div class="flex flex-col lg:flex-row gap-8">
+                <div class="lg:w-2/3 map-container p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-indigo-800">Interactive Map</h2>
+                        <div class="flex space-x-4">
+                            <div class="legend-item">
+                                <div class="legend-color bg-[#38bdf8]"></div>
+                                <span>Not Visited</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color bg-[#8b5cf6]"></div>
+                                <span>Visited</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="tooltip" class="tooltip" style="opacity: 0;"></div>
+                    
+                    <svg viewBox="0 0 800 1350" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Northern Vietnam (Red River Delta & Northeast) -->
+                        <g id="northern-vietnam">
+                            <!-- Northeast Region -->
+                            <path class="region-outline" d="M400,100 C450,80 500,90 550,120 C600,150 620,200 610,250 C600,300 550,330 500,340 C450,350 400,330 370,300 C340,270 330,220 350,170 C370,120 400,100 400,100 Z"></path>
+                            <text x="480" y="220" class="region-title">NORTHEAST</text>
+                            
+                            <!-- Hà Giang -->
+                            <path id="ha-giang" d="M400,100 L430,90 L460,110 L450,140 L410,150 Z" class="province"></path>
+                            <text x="430" y="120" class="province-label">Hà Giang</text>
+                            
+                            <!-- Cao Bằng -->
+                            <path id="cao-bang" d="M460,110 L500,90 L530,120 L510,150 L450,140 Z" class="province"></path>
+                            <text x="490" y="120" class="province-label">Cao Bằng</text>
+                            
+                            <!-- Bắc Kạn -->
+                            <path id="bac-kan" d="M450,140 L510,150 L500,180 L440,170 Z" class="province"></path>
+                            <text x="475" y="160" class="province-label">Bắc Kạn</text>
+                            
+                            <!-- Lạng Sơn -->
+                            <path id="lang-son" d="M510,150 L550,130 L570,160 L540,190 L500,180 Z" class="province"></path>
+                            <text x="530" y="160" class="province-label">Lạng Sơn</text>
+                            
+                            <!-- Tuyên Quang -->
+                            <path id="tuyen-quang" d="M410,150 L450,140 L440,170 L400,180 Z" class="province"></path>
+                            <text x="425" y="160" class="province-label">Tuyên Quang</text>
+                            
+                            <!-- Thái Nguyên -->
+                            <path id="thai-nguyen" d="M440,170 L500,180 L490,210 L430,200 Z" class="province"></path>
+                            <text x="465" y="190" class="province-label">Thái Nguyên</text>
+                            
+                            <!-- Phú Thọ -->
+                            <path id="phu-tho" d="M400,180 L440,170 L430,200 L390,210 Z" class="province"></path>
+                            <text x="415" y="190" class="province-label">Phú Thọ</text>
+                            
+                            <!-- Vĩnh Phúc -->
+                            <path id="vinh-phuc" d="M390,210 L430,200 L420,230 L380,240 Z" class="province"></path>
+                            <text x="405" y="220" class="province-label">Vĩnh Phúc</text>
+                            
+                            <!-- Bắc Giang -->
+                            <path id="bac-giang" d="M430,200 L490,210 L480,240 L420,230 Z" class="province"></path>
+                            <text x="455" y="220" class="province-label">Bắc Giang</text>
+                            
+                            <!-- Quảng Ninh -->
+                            <path id="quang-ninh" d="M490,210 L540,190 L580,220 L550,260 L510,250 L480,240 Z" class="province"></path>
+                            <text x="530" y="230" class="province-label">Quảng Ninh</text>
+                            
+                            <!-- Northwest Region -->
+                            <path class="region-outline" d="M300,120 C350,100 380,120 400,150 C420,180 420,220 400,250 C380,280 340,290 300,270 C260,250 240,210 250,170 C260,130 300,120 300,120 Z"></path>
+                            <text x="330" y="190" class="region-title">NORTHWEST</text>
+                            
+                            <!-- Lào Cai -->
+                            <path id="lao-cai" d="M350,120 L400,100 L410,150 L360,170 Z" class="province"></path>
+                            <text x="380" y="135" class="province-label">Lào Cai</text>
+                            
+                            <!-- Yên Bái -->
+                            <path id="yen-bai" d="M360,170 L410,150 L400,180 L350,200 Z" class="province"></path>
+                            <text x="380" y="175" class="province-label">Yên Bái</text>
+                            
+                            <!-- Điện Biên -->
+                            <path id="dien-bien" d="M300,170 L350,150 L360,190 L310,210 Z" class="province"></path>
+                            <text x="330" y="180" class="province-label">Điện Biên</text>
+                            
+                            <!-- Lai Châu -->
+                            <path id="lai-chau" d="M320,130 L350,120 L350,150 L300,170 Z" class="province"></path>
+                            <text x="330" y="145" class="province-label">Lai Châu</text>
+                            
+                            <!-- Sơn La -->
+                            <path id="son-la" d="M310,210 L360,190 L350,230 L300,250 Z" class="province"></path>
+                            <text x="330" y="220" class="province-label">Sơn La</text>
+                            
+                            <!-- Hòa Bình -->
+                            <path id="hoa-binh" d="M350,200 L400,180 L390,210 L350,230 Z" class="province"></path>
+                            <text x="370" y="210" class="province-label">Hòa Bình</text>
+                            
+                            <!-- Red River Delta -->
+                            <path class="region-outline" d="M380,240 C420,230 460,240 500,270 C540,300 550,340 530,380 C510,420 470,440 430,430 C390,420 360,390 350,350 C340,310 350,270 380,240 Z"></path>
+                            <text x="450" y="330" class="region-title">RED RIVER DELTA</text>
+                            
+                            <!-- Bắc Ninh -->
+                            <path id="bac-ninh" d="M420,230 L480,240 L470,270 L410,260 Z" class="province"></path>
+                            <text x="445" y="250" class="province-label">Bắc Ninh</text>
+                            
+                            <!-- Hải Dương -->
+                            <path id="hai-duong" d="M470,270 L510,250 L500,290 L460,310 Z" class="province"></path>
+                            <text x="485" y="280" class="province-label">Hải Dương</text>
+                            
+                            <!-- Hà Nội -->
+                            <path id="hanoi" d="M410,260 L470,270 L460,310 L400,300 Z" class="province"></path>
+                            <text x="435" y="285" class="province-label">Hà Nội</text>
+                            
+                            <!-- Hưng Yên -->
+                            <path id="hung-yen" d="M400,300 L460,310 L450,340 L390,330 Z" class="province"></path>
+                            <text x="425" y="320" class="province-label">Hưng Yên</text>
+                            
+                            <!-- Hải Phòng -->
+                            <path id="hai-phong" d="M500,290 L540,270 L530,310 L490,330 Z" class="province"></path>
+                            <text x="515" y="300" class="province-label">Hải Phòng</text>
+                            
+                            <!-- Thái Bình -->
+                            <path id="thai-binh" d="M460,310 L500,290 L490,330 L450,350 Z" class="province"></path>
+                            <text x="475" y="320" class="province-label">Thái Bình</text>
+                            
+                            <!-- Hà Nam -->
+                            <path id="ha-nam" d="M390,330 L450,340 L440,370 L380,360 Z" class="province"></path>
+                            <text x="415" y="350" class="province-label">Hà Nam</text>
+                            
+                            <!-- Nam Định -->
+                            <path id="nam-dinh" d="M450,350 L490,330 L480,370 L440,390 Z" class="province"></path>
+                            <text x="465" y="360" class="province-label">Nam Định</text>
+                            
+                            <!-- Ninh Bình -->
+                            <path id="ninh-binh" d="M380,360 L440,370 L430,400 L370,390 Z" class="province"></path>
+                            <text x="405" y="380" class="province-label">Ninh Bình</text>
+                        </g>
+                        
+                        <!-- North Central Coast -->
+                        <g id="north-central-coast">
+                            <path class="region-outline" d="M370,390 C420,380 470,400 510,440 C550,480 570,540 560,600 C550,660 510,700 450,710 C390,720 340,690 310,640 C280,590 290,530 330,480 C370,430 370,390 370,390 Z"></path>
+                            <text x="430" y="550" class="region-title">NORTH CENTRAL COAST</text>
+                            
+                            <!-- Thanh Hóa -->
+                            <path id="thanh-hoa" d="M370,390 L430,400 L450,450 L390,470 L350,440 Z" class="province"></path>
+                            <text x="400" y="430" class="province-label">Thanh Hóa</text>
+                            
+                            <!-- Nghệ An -->
+                            <path id="nghe-an" d="M350,440 L390,470 L410,520 L370,550 L330,510 Z" class="province"></path>
+                            <text x="370" y="500" class="province-label">Nghệ An</text>
+                            
+                            <!-- Hà Tĩnh -->
+                            <path id="ha-tinh" d="M370,550 L410,520 L430,570 L390,600 Z" class="province"></path>
+                            <text x="400" y="560" class="province-label">Hà Tĩnh</text>
+                            
+                            <!-- Quảng Bình -->
+                            <path id="quang-binh" d="M390,600 L430,570 L450,620 L410,650 Z" class="province"></path>
+                            <text x="420" y="610" class="province-label">Quảng Bình</text>
+                            
+                            <!-- Quảng Trị -->
+                            <path id="quang-tri" d="M410,650 L450,620 L470,670 L430,700 Z" class="province"></path>
+                            <text x="440" y="660" class="province-label">Quảng Trị</text>
+                            
+                            <!-- Thừa Thiên Huế -->
+                            <path id="thua-thien-hue" d="M430,700 L470,670 L490,720 L450,750 Z" class="province"></path>
+                            <text x="460" y="710" class="province-label">T.T. Huế</text>
+                        </g>
+                        
+                        <!-- South Central Coast -->
+                        <g id="south-central-coast">
+                            <path class="region-outline" d="M450,750 C500,740 550,760 580,800 C610,840 620,900 600,950 C580,1000 530,1030 480,1020 C430,1010 390,970 380,920 C370,870 390,820 420,780 C450,740 450,750 450,750 Z"></path>
+                            <text x="500" y="880" class="region-title">SOUTH CENTRAL COAST</text>
+                            
+                            <!-- Đà Nẵng -->
+                            <path id="da-nang" d="M450,750 L490,720 L510,760 L470,790 Z" class="province"></path>
+                            <text x="480" y="755" class="province-label">Đà Nẵng</text>
+                            
+                            <!-- Quảng Nam -->
+                            <path id="quang-nam" d="M470,790 L510,760 L530,800 L490,830 Z" class="province"></path>
+                            <text x="500" y="795" class="province-label">Quảng Nam</text>
+                            
+                            <!-- Quảng Ngãi -->
+                            <path id="quang-ngai" d="M490,830 L530,800 L550,840 L510,870 Z" class="province"></path>
+                            <text x="520" y="835" class="province-label">Quảng Ngãi</text>
+                            
+                            <!-- Bình Định -->
+                            <path id="binh-dinh" d="M510,870 L550,840 L570,880 L530,910 Z" class="province"></path>
+                            <text x="540" y="875" class="province-label">Bình Định</text>
+                            
+                            <!-- Phú Yên -->
+                            <path id="phu-yen" d="M530,910 L570,880 L590,920 L550,950 Z" class="province"></path>
+                            <text x="560" y="915" class="province-label">Phú Yên</text>
+                            
+                            <!-- Khánh Hòa -->
+                            <path id="khanh-hoa" d="M550,950 L590,920 L610,960 L570,990 Z" class="province"></path>
+                            <text x="580" y="955" class="province-label">Khánh Hòa</text>
+                            
+                            <!-- Ninh Thuận -->
+                            <path id="ninh-thuan" d="M570,990 L610,960 L630,1000 L590,1030 Z" class="province"></path>
+                            <text x="600" y="995" class="province-label">Ninh Thuận</text>
+                            
+                            <!-- Bình Thuận -->
+                            <path id="binh-thuan" d="M590,1030 L630,1000 L650,1040 L610,1070 Z" class="province"></path>
+                            <text x="620" y="1035" class="province-label">Bình Thuận</text>
+                        </g>
+                        
+                        <!-- Central Highlands -->
+                        <g id="central-highlands">
+                            <path class="region-outline" d="M400,800 C450,780 500,800 530,840 C560,880 570,940 550,990 C530,1040 480,1070 430,1050 C380,1030 350,980 350,930 C350,880 370,830 400,800 Z"></path>
+                            <text x="460" y="920" class="region-title">CENTRAL HIGHLANDS</text>
+                            
+                            <!-- Kon Tum -->
+                            <path id="kon-tum" d="M420,780 L470,760 L490,810 L440,830 Z" class="province"></path>
+                            <text x="455" y="795" class="province-label">Kon Tum</text>
+                            
+                            <!-- Gia Lai -->
+                            <path id="gia-lai" d="M440,830 L490,810 L510,860 L460,880 Z" class="province"></path>
+                            <text x="475" y="845" class="province-label">Gia Lai</text>
+                            
+                            <!-- Đắk Lắk -->
+                            <path id="dak-lak" d="M460,880 L510,860 L530,910 L480,930 Z" class="province"></path>
+                            <text x="495" y="895" class="province-label">Đắk Lắk</text>
+                            
+                            <!-- Đắk Nông -->
+                            <path id="dak-nong" d="M480,930 L530,910 L550,960 L500,980 Z" class="province"></path>
+                            <text x="515" y="945" class="province-label">Đắk Nông</text>
+                            
+                            <!-- Lâm Đồng -->
+                            <path id="lam-dong" d="M500,980 L550,960 L570,1010 L520,1030 Z" class="province"></path>
+                            <text x="535" y="995" class="province-label">Lâm Đồng</text>
+                        </g>
+                        
+                        <!-- Southeast -->
+                        <g id="southeast">
+                            <path class="region-outline" d="M520,1030 C570,1010 620,1030 650,1070 C680,1110 690,1160 670,1200 C650,1240 600,1260 550,1240 C500,1220 470,1180 460,1130 C450,1080 470,1040 520,1030 Z"></path>
+                            <text x="570" y="1130" class="region-title">SOUTHEAST</text>
+                            
+                            <!-- Bình Phước -->
+                            <path id="binh-phuoc" d="M520,1030 L570,1010 L590,1050 L540,1070 Z" class="province"></path>
+                            <text x="555" y="1040" class="province-label">Bình Phước</text>
+                            
+                            <!-- Tây Ninh -->
+                            <path id="tay-ninh" d="M500,1070 L540,1050 L560,1090 L520,1110 Z" class="province"></path>
+                            <text x="530" y="1080" class="province-label">Tây Ninh</text>
+                            
+                            <!-- Bình Dương -->
+                            <path id="binh-duong" d="M540,1070 L590,1050 L610,1090 L560,1110 Z" class="province"></path>
+                            <text x="575" y="1080" class="province-label">Bình Dương</text>
+                            
+                            <!-- Đồng Nai -->
+                            <path id="dong-nai" d="M560,1110 L610,1090 L630,1130 L580,1150 Z" class="province"></path>
+                            <text x="595" y="1120" class="province-label">Đồng Nai</text>
+                            
+                            <!-- Bà Rịa - Vũng Tàu -->
+                            <path id="ba-ria-vung-tau" d="M580,1150 L630,1130 L650,1170 L600,1190 Z" class="province"></path>
+                            <text x="615" y="1160" class="province-label">BR-VT</text>
+                            
+                            <!-- TP. Hồ Chí Minh -->
+                            <path id="ho-chi-minh" d="M520,1110 L560,1090 L580,1130 L540,1150 Z" class="province"></path>
+                            <text x="550" y="1120" class="province-label">TP.HCM</text>
+                        </g>
+                        
+                        <!-- Mekong Delta -->
+                        <g id="mekong-delta">
+                            <path class="region-outline" d="M400,1100 C450,1080 500,1100 530,1140 C560,1180 570,1230 550,1270 C530,1310 480,1330 430,1310 C380,1290 350,1240 350,1190 C350,1140 370,1110 400,1100 Z"></path>
+                            <text x="460" y="1200" class="region-title">MEKONG DELTA</text>
+                            
+                            <!-- Long An -->
+                            <path id="long-an" d="M480,1110 L520,1090 L540,1130 L500,1150 Z" class="province"></path>
+                            <text x="510" y="1120" class="province-label">Long An</text>
+                            
+                            <!-- Tiền Giang -->
+                            <path id="tien-giang" d="M500,1150 L540,1130 L560,1170 L520,1190 Z" class="province"></path>
+                            <text x="530" y="1160" class="province-label">Tiền Giang</text>
+                            
+                            <!-- Bến Tre -->
+                            <path id="ben-tre" d="M520,1190 L560,1170 L580,1210 L540,1230 Z" class="province"></path>
+                            <text x="550" y="1200" class="province-label">Bến Tre</text>
+                            
+                            <!-- Trà Vinh -->
+                            <path id="tra-vinh" d="M540,1230 L580,1210 L600,1250 L560,1270 Z" class="province"></path>
+                            <text x="570" y="1240" class="province-label">Trà Vinh</text>
+                            
+                            <!-- Vĩnh Long -->
+                            <path id="vinh-long" d="M500,1190 L540,1170 L560,1210 L520,1230 Z" class="province"></path>
+                            <text x="530" y="1200" class="province-label">Vĩnh Long</text>
+                            
+                            <!-- Đồng Tháp -->
+                            <path id="dong-thap" d="M460,1150 L500,1130 L520,1170 L480,1190 Z" class="province"></path>
+                            <text x="490" y="1160" class="province-label">Đồng Tháp</text>
+                            
+                            <!-- An Giang -->
+                            <path id="an-giang" d="M430,1170 L470,1150 L490,1190 L450,1210 Z" class="province"></path>
+                            <text x="460" y="1180" class="province-label">An Giang</text>
+                            
+                            <!-- Kiên Giang -->
+                            <path id="kien-giang" d="M400,1190 L440,1170 L460,1210 L420,1230 Z" class="province"></path>
+                            <text x="430" y="1200" class="province-label">Kiên Giang</text>
+                            
+                            <!-- Cần Thơ -->
+                            <path id="can-tho" d="M480,1190 L520,1170 L540,1210 L500,1230 Z" class="province"></path>
+                            <text x="510" y="1200" class="province-label">Cần Thơ</text>
+                            
+                            <!-- Hậu Giang -->
+                            <path id="hau-giang" d="M460,1210 L500,1190 L520,1230 L480,1250 Z" class="province"></path>
+                            <text x="490" y="1220" class="province-label">Hậu Giang</text>
+                            
+                            <!-- Sóc Trăng -->
+                            <path id="soc-trang" d="M500,1230 L540,1210 L560,1250 L520,1270 Z" class="province"></path>
+                            <text x="530" y="1240" class="province-label">Sóc Trăng</text>
+                            
+                            <!-- Bạc Liêu -->
+                            <path id="bac-lieu" d="M480,1250 L520,1230 L540,1270 L500,1290 Z" class="province"></path>
+                            <text x="510" y="1260" class="province-label">Bạc Liêu</text>
+                            
+                            <!-- Cà Mau -->
+                            <path id="ca-mau" d="M450,1270 L490,1250 L510,1290 L470,1310 Z" class="province stroke-2 stroke-indigo-600"></path>
+                            <text x="480" y="1280" class="province-label">Cà Mau</text>
+                        </g>
+                        
+                        <!-- Islands representation -->
+                        <g id="islands">
+                            <circle cx="650" cy="500" r="20" class="province" id="hoang-sa"></circle>
+                            <text x="650" y="500" text-anchor="middle" class="island-label">Hoàng Sa</text>
+                            
+                            <circle cx="700" cy="800" r="20" class="province" id="truong-sa"></circle>
+                            <text x="700" y="800" text-anchor="middle" class="island-label">Trường Sa</text>
+                        </g>
+                    </svg>
+                    
+                    <!-- Island information boxes -->
+                    <div class="island-box top-16 right-8 text-sm">
+                        <h3 class="font-bold text-indigo-800">Hoàng Sa Islands</h3>
+                        <p class="text-gray-600">Part of Vietnam's sovereignty</p>
+                    </div>
+                    
+                    <div class="island-box bottom-16 right-8 text-sm">
+                        <h3 class="font-bold text-indigo-800">Trường Sa Islands</h3>
+                        <p class="text-gray-600">Part of Vietnam's sovereignty</p>
+                    </div>
+                </div>
+                
+                <div class="lg:w-1/3 space-y-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6 memory-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-2xl font-bold text-indigo-800">Province Information</h2>
+                            <div class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
+                                <span id="visited-count">0</span>/63 visited
+                            </div>
+                        </div>
+                        <div id="province-info" class="text-gray-600 min-h-[150px] flex items-center justify-center">
+                            <div class="w-full">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-2xl font-bold text-indigo-800">Select a province</h3>
+                                    <span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+                                        Not visited yet
+                                    </span>
+                                </div>
+                                <div class="h-px bg-gray-200 my-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-lg p-6 memory-card">
+                        <h2 class="text-2xl font-bold text-indigo-800 mb-4">Your Travel Memories</h2>
+                        <div id="memory-form" class="hidden">
+                            <div class="mb-4">
+                                <label for="memory-text" class="block text-sm font-medium text-gray-700 mb-1">Your memories in <span id="selected-province-name" class="font-semibold text-indigo-700">Select a province</span>:</label>
+                                <textarea id="memory-text" rows="5" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"></textarea>
+                            </div>
+                            <div class="flex justify-between">
+                                <button id="save-memory" class="btn px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-md">
+                                    <span class="flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h1a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h1v5.586l-1.293-1.293z"></path>
+                                        </svg>
+                                        Save Memory
+                                    </span>
+                                </button>
+                                <button id="mark-visited" class="btn px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shadow-md">
+                                    <span class="flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Mark as Visited
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="no-selection" class="py-8 text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-indigo-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                            </svg>
+                            <p class="text-gray-500">Select a province on the map to record your travel memories</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-lg p-6 memory-card">
+                        <h2 class="text-2xl font-bold text-indigo-800 mb-4">All 63 Provinces</h2>
+                        <div class="mb-3">
+                            <input type="text" id="province-search" placeholder="Search provinces..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div class="province-list">
+                            <ul id="province-list" class="divide-y divide-gray-200"></ul>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-lg p-6 memory-card">
+                        <h2 class="text-2xl font-bold text-indigo-800 mb-4">Recent Memories</h2>
+                        <div id="recent-memories" class="space-y-3">
+                            <p id="no-memories" class="text-center text-gray-500 py-4">No memories recorded yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <script>
+            // Province data with names - all 63 provinces of Vietnam
+            const provinceData = {
+                'ha-giang': { name: 'Hà Giang', visited: false, memory: '' },
+                'cao-bang': { name: 'Cao Bằng', visited: false, memory: '' },
+                'bac-kan': { name: 'Bắc Kạn', visited: false, memory: '' },
+                'lang-son': { name: 'Lạng Sơn', visited: false, memory: '' },
+                'tuyen-quang': { name: 'Tuyên Quang', visited: false, memory: '' },
+                'lao-cai': { name: 'Lào Cai', visited: false, memory: '' },
+                'yen-bai': { name: 'Yên Bái', visited: false, memory: '' },
+                'dien-bien': { name: 'Điện Biên', visited: false, memory: '' },
+                'lai-chau': { name: 'Lai Châu', visited: false, memory: '' },
+                'son-la': { name: 'Sơn La', visited: false, memory: '' },
+                'hoa-binh': { name: 'Hòa Bình', visited: false, memory: '' },
+                'thai-nguyen': { name: 'Thái Nguyên', visited: false, memory: '' },
+                'phu-tho': { name: 'Phú Thọ', visited: false, memory: '' },
+                'vinh-phuc': { name: 'Vĩnh Phúc', visited: false, memory: '' },
+                'bac-giang': { name: 'Bắc Giang', visited: false, memory: '' },
+                'quang-ninh': { name: 'Quảng Ninh', visited: false, memory: '' },
+                'bac-ninh': { name: 'Bắc Ninh', visited: false, memory: '' },
+                'hai-duong': { name: 'Hải Dương', visited: false, memory: '' },
+                'hanoi': { name: 'Hà Nội', visited: false, memory: '' },
+                'hung-yen': { name: 'Hưng Yên', visited: false, memory: '' },
+                'hai-phong': { name: 'Hải Phòng', visited: false, memory: '' },
+                'thai-binh': { name: 'Thái Bình', visited: false, memory: '' },
+                'ha-nam': { name: 'Hà Nam', visited: false, memory: '' },
+                'nam-dinh': { name: 'Nam Định', visited: false, memory: '' },
+                'ninh-binh': { name: 'Ninh Bình', visited: false, memory: '' },
+                'thanh-hoa': { name: 'Thanh Hóa', visited: false, memory: '' },
+                'nghe-an': { name: 'Nghệ An', visited: false, memory: '' },
+                'ha-tinh': { name: 'Hà Tĩnh', visited: false, memory: '' },
+                'quang-binh': { name: 'Quảng Bình', visited: false, memory: '' },
+                'quang-tri': { name: 'Quảng Trị', visited: false, memory: '' },
+                'thua-thien-hue': { name: 'Thừa Thiên Huế', visited: false, memory: '' },
+                'da-nang': { name: 'Đà Nẵng', visited: false, memory: '' },
+                'quang-nam': { name: 'Quảng Nam', visited: false, memory: '' },
+                'quang-ngai': { name: 'Quảng Ngãi', visited: false, memory: '' },
+                'binh-dinh': { name: 'Bình Định', visited: false, memory: '' },
+                'phu-yen': { name: 'Phú Yên', visited: false, memory: '' },
+                'khanh-hoa': { name: 'Khánh Hòa', visited: false, memory: '' },
+                'ninh-thuan': { name: 'Ninh Thuận', visited: false, memory: '' },
+                'binh-thuan': { name: 'Bình Thuận', visited: false, memory: '' },
+                'kon-tum': { name: 'Kon Tum', visited: false, memory: '' },
+                'gia-lai': { name: 'Gia Lai', visited: false, memory: '' },
+                'dak-lak': { name: 'Đắk Lắk', visited: false, memory: '' },
+                'dak-nong': { name: 'Đắk Nông', visited: false, memory: '' },
+                'lam-dong': { name: 'Lâm Đồng', visited: false, memory: '' },
+                'binh-phuoc': { name: 'Bình Phước', visited: false, memory: '' },
+                'tay-ninh': { name: 'Tây Ninh', visited: false, memory: '' },
+                'binh-duong': { name: 'Bình Dương', visited: false, memory: '' },
+                'dong-nai': { name: 'Đồng Nai', visited: false, memory: '' },
+                'ba-ria-vung-tau': { name: 'Bà Rịa - Vũng Tàu', visited: false, memory: '' },
+                'ho-chi-minh': { name: 'TP. Hồ Chí Minh', visited: false, memory: '' },
+                'long-an': { name: 'Long An', visited: false, memory: '' },
+                'tien-giang': { name: 'Tiền Giang', visited: false, memory: '' },
+                'ben-tre': { name: 'Bến Tre', visited: false, memory: '' },
+                'tra-vinh': { name: 'Trà Vinh', visited: false, memory: '' },
+                'vinh-long': { name: 'Vĩnh Long', visited: false, memory: '' },
+                'dong-thap': { name: 'Đồng Tháp', visited: false, memory: '' },
+                'an-giang': { name: 'An Giang', visited: false, memory: '' },
+                'kien-giang': { name: 'Kiên Giang', visited: false, memory: '' },
+                'can-tho': { name: 'Cần Thơ', visited: false, memory: '' },
+                'hau-giang': { name: 'Hậu Giang', visited: false, memory: '' },
+                'soc-trang': { name: 'Sóc Trăng', visited: false, memory: '' },
+                'bac-lieu': { name: 'Bạc Liêu', visited: false, memory: '' },
+                'ca-mau': { name: 'Cà Mau', visited: false, memory: '' },
+                'hoang-sa': { name: 'Hoàng Sa', visited: false, memory: '' },
+                'truong-sa': { name: 'Trường Sa', visited: false, memory: '' }
+            };
+    
+            // Populate the province list
+            function populateProvinceList(filter = '') {
+                const provinceList = document.getElementById('province-list');
+                provinceList.innerHTML = '';
+                
+                const sortedProvinces = Object.entries(provinceData)
+                    .sort((a, b) => a[1].name.localeCompare(b[1].name));
+                
+                sortedProvinces.forEach(([provinceId, data]) => {
+                    if (filter && !data.name.toLowerCase().includes(filter.toLowerCase())) {
+                        return;
+                    }
+                    
+                    const listItem = document.createElement('li');
+                    listItem.className = `province-list-item px-3 py-2 flex justify-between items-center ${data.visited ? 'visited' : ''}`;
+                    listItem.setAttribute('data-province', provinceId);
+                    
+                    listItem.innerHTML = `
+                        <span>${data.name}</span>
+                        ${data.visited ? '<span class="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full">Visited</span>' : ''}
+                    `;
+                    
+                    listItem.addEventListener('click', function() {
+                        selectProvince(provinceId);
+                    });
+                    
+                    provinceList.appendChild(listItem);
+                });
+            }
+    
+            // Search functionality for provinces
+            document.getElementById('province-search').addEventListener('input', function() {
+                populateProvinceList(this.value);
+            });
+    
+            // Load saved data from localStorage if available
+            function loadSavedData() {
+                const savedData = localStorage.getItem('vietnamTravelMemories');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    Object.keys(parsedData).forEach(provinceId => {
+                        if (provinceData[provinceId]) {
+                            provinceData[provinceId] = parsedData[provinceId];
+                            if (parsedData[provinceId].visited) {
+                                const provinceElement = document.getElementById(provinceId);
+                                if (provinceElement) {
+                                    provinceElement.classList.add('visited');
+                                }
+                            }
+                        }
+                    });
+                    updateVisitedCount();
+                    updateRecentMemories();
+                }
+                
+                // Populate the province list
+                populateProvinceList();
+            }
+    
+            // Save data to localStorage
+            function saveData() {
+                localStorage.setItem('vietnamTravelMemories', JSON.stringify(provinceData));
+            }
+    
+            // Update the visited provinces count
+            function updateVisitedCount() {
+                const visitedCount = Object.values(provinceData).filter(province => province.visited).length;
+                document.getElementById('visited-count').textContent = visitedCount;
+            }
+    
+            // Update recent memories section
+            function updateRecentMemories() {
+                const recentMemoriesContainer = document.getElementById('recent-memories');
+                const noMemoriesElement = document.getElementById('no-memories');
+                
+                // Get provinces with memories
+                const provincesWithMemories = Object.entries(provinceData)
+                    .filter(([_, data]) => data.memory.trim() !== '')
+                    .sort((a, b) => (b[1].lastUpdated || 0) - (a[1].lastUpdated || 0))
+                    .slice(0, 3);
+                
+                if (provincesWithMemories.length > 0) {
+                    noMemoriesElement.style.display = 'none';
+                    
+                    // Clear previous memories
+                    while (recentMemoriesContainer.children.length > 1) {
+                        recentMemoriesContainer.removeChild(recentMemoriesContainer.lastChild);
+                    }
+                    
+                    // Add recent memories
+                    provincesWithMemories.forEach(([provinceId, data]) => {
+                        const memoryCard = document.createElement('div');
+                        memoryCard.className = 'p-3 bg-indigo-50 rounded-lg';
+                        memoryCard.innerHTML = `
+                            <div class="flex justify-between items-center mb-1">
+                                <h4 class="font-bold text-indigo-700">${data.name}</h4>
+                                <span class="text-xs text-gray-500">${data.lastUpdated ? new Date(data.lastUpdated).toLocaleDateString() : ''}</span>
+                            </div>
+                            <p class="text-gray-700 text-sm line-clamp-2">${data.memory}</p>
+                            <button class="view-memory text-xs text-indigo-600 hover:text-indigo-800 mt-1" data-province="${provinceId}">View full memory</button>
+                        `;
+                        recentMemoriesContainer.appendChild(memoryCard);
+                    });
+                    
+                    // Add event listeners to view memory buttons
+                    document.querySelectorAll('.view-memory').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const provinceId = this.getAttribute('data-province');
+                            selectProvince(provinceId);
+                        });
+                    });
+                } else {
+                    noMemoriesElement.style.display = 'block';
+                }
+            }
+    
+            // Variables to track the currently selected province
+            let selectedProvinceId = null;
+    
+            // Function to select a province
+            function selectProvince(provinceId) {
+                selectedProvinceId = provinceId;
+                
+                // Update the province info section
+                const provinceInfo = document.getElementById('province-info');
+                const province = provinceData[provinceId];
+                
+                let infoHTML = `
+                    <div class="w-full">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-2xl font-bold text-indigo-800">${province.name}</h3>
+                            <span class="px-3 py-1 ${province.visited ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'} rounded-full text-sm font-medium">
+                                ${province.visited ? 'Visited' : 'Not visited yet'}
+                            </span>
+                        </div>
+                        
+                        <div class="h-px bg-gray-200 my-3"></div>
+                `;
+                
+                if (province.visited && province.memory) {
+                    infoHTML += `
+                        <div class="mt-4 p-4 bg-indigo-50 rounded-lg">
+                            <h4 class="font-bold text-indigo-700 mb-2">Your Memories:</h4>
+                            <p class="text-gray-700">${province.memory}</p>
+                            <p class="text-xs text-gray-500 mt-2">Last updated: ${province.lastUpdated ? new Date(province.lastUpdated).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                    `;
+                }
+                
+                infoHTML += `</div>`;
+                
+                provinceInfo.innerHTML = infoHTML;
+                
+                // Show the memory form and update the selected province name
+                document.getElementById('memory-form').classList.remove('hidden');
+                document.getElementById('no-selection').classList.add('hidden');
+                document.getElementById('selected-province-name').textContent = province.name;
+                document.getElementById('memory-text').value = province.memory || '';
+                
+                // Update the mark as visited button text
+                document.getElementById('mark-visited').innerHTML = `
+                    <span class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            ${province.visited ? 
+                                '<path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />' :
+                                '<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />'}
+                        </svg>
+                        ${province.visited ? 'Mark as Not Visited' : 'Mark as Visited'}
+                    </span>
+                `;
+                
+                // Highlight the selected province in the list
+                document.querySelectorAll('.province-list-item').forEach(item => {
+                    item.classList.remove('bg-indigo-50');
+                });
+                
+                const listItem = document.querySelector(`.province-list-item[data-province="${provinceId}"]`);
+                if (listItem) {
+                    listItem.classList.add('bg-indigo-50');
+                    listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+                
+                // Highlight the selected province on the map
+                document.querySelectorAll('.province').forEach(province => {
+                    province.classList.remove('stroke-2', 'stroke-indigo-600');
+                });
+                
+                const provinceElement = document.getElementById(provinceId);
+                if (provinceElement) {
+                    provinceElement.classList.add('stroke-2', 'stroke-indigo-600');
+                }
+            }
+    
+            // Add click event listeners to all provinces
+            document.querySelectorAll('.province').forEach(province => {
+                province.addEventListener('click', function() {
+                    selectProvince(this.id);
+                });
+                
+                // Add hover tooltip functionality
+                province.addEventListener('mouseenter', function(e) {
+                    const provinceId = this.id;
+                    const provinceName = provinceData[provinceId].name;
+                    const tooltip = document.getElementById('tooltip');
+                    
+                    tooltip.textContent = provinceName;
+                    tooltip.style.opacity = '1';
+                    
+                    // Position the tooltip near the mouse
+                    const updateTooltipPosition = (e) => {
+                        const x = e.clientX + 15;
+                        const y = e.clientY + 15;
+                        tooltip.style.left = `${x}px`;
+                        tooltip.style.top = `${y}px`;
+                    };
+                    
+                    updateTooltipPosition(e);
+                    
+                    // Update tooltip position as mouse moves
+                    this.addEventListener('mousemove', updateTooltipPosition);
+                });
+                
+                province.addEventListener('mouseleave', function() {
+                    const tooltip = document.getElementById('tooltip');
+                    tooltip.style.opacity = '0';
+                    this.removeEventListener('mousemove', null);
+                });
+            });
+    
+            // Save memory button click handler
+            document.getElementById('save-memory').addEventListener('click', function() {
+                if (selectedProvinceId) {
+                    const memoryText = document.getElementById('memory-text').value;
+                    provinceData[selectedProvinceId].memory = memoryText;
+                    provinceData[selectedProvinceId].lastUpdated = Date.now();
+                    
+                    // Update the province info section
+                    selectProvince(selectedProvinceId);
+                    
+                    // Update recent memories
+                    updateRecentMemories();
+                    
+                    // Save to localStorage
+                    saveData();
+                    
+                    // Show a confirmation message with animation
+                    const saveButton = this;
+                    saveButton.classList.add('bg-green-600');
+                    saveButton.innerHTML = `
+                        <span class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Saved!
+                        </span>
+                    `;
+                    
+                    setTimeout(() => {
+                        saveButton.classList.remove('bg-green-600');
+                        saveButton.innerHTML = `
+                            <span class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h1a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h1v5.586l-1.293-1.293z" />
+                                </svg>
+                                Save Memory
+                            </span>
+                        `;
+                    }, 2000);
+                }
+            });
+    
+            // Mark as visited button click handler
+            document.getElementById('mark-visited').addEventListener('click', function() {
+                if (selectedProvinceId) {
+                    const province = provinceData[selectedProvinceId];
+                    province.visited = !province.visited; // Toggle visited status
+                    
+                    // Update the province on the map
+                    const provinceElement = document.getElementById(selectedProvinceId);
+                    if (provinceElement) {
+                        if (province.visited) {
+                            provinceElement.classList.add('visited');
+                        } else {
+                            provinceElement.classList.remove('visited');
+                        }
+                    }
+                    
+                    // Update the province info section
+                    selectProvince(selectedProvinceId);
+                    
+                    // Update the visited count
+                    updateVisitedCount();
+                    
+                    // Update the province list
+                    populateProvinceList(document.getElementById('province-search').value);
+                    
+                    // Save to localStorage
+                    saveData();
+                }
+            });
+    
+            // Load saved data when the page loads
+            window.addEventListener('DOMContentLoaded', loadSavedData);
+        </script>
+    </body>
+</html>
