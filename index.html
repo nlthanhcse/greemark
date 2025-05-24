@@ -45,6 +45,8 @@
                 font-size: 6px;
                 font-weight: bold;
                 fill: #1e40af;
+                pointer-events: none;
+                text-anchor: middle;
             }
             
             .map-container {
@@ -166,7 +168,7 @@
     <body>
         <div class="container mx-auto px-4 py-8 max-w-7xl">
             <header class="text-center mb-8">
-                <h1 class="text-5xl font-bold text-indigo-800 mb-3">Greenmart</h1>
+                <h1 class="text-5xl font-bold text-indigo-800 mb-3">Vietnam Travel Memories</h1>
                 <p class="text-xl text-gray-600">Explore, click, and record your journey through Vietnam's 63 provinces</p>
             </header>
     
@@ -488,21 +490,21 @@
                         
                         <!-- Islands representation -->
                         <g id="islands">
-                            <circle cx="650" cy="500" r="20" class="province" id="hoang-sa"></circle>
+                            <circle cx="650" cy="500" r="25" class="province" id="hoang-sa"></circle>
                             <text x="650" y="500" text-anchor="middle" class="island-label">Hoàng Sa</text>
                             
-                            <circle cx="700" cy="800" r="20" class="province" id="truong-sa"></circle>
+                            <circle cx="700" cy="800" r="25" class="province" id="truong-sa"></circle>
                             <text x="700" y="800" text-anchor="middle" class="island-label">Trường Sa</text>
                         </g>
                     </svg>
                     
                     <!-- Island information boxes -->
-                    <div class="island-box top-16 right-8 text-sm">
+                    <div class="island-box top-16 left-8 text-sm">
                         <h3 class="font-bold text-indigo-800">Hoàng Sa Islands</h3>
                         <p class="text-gray-600">Part of Vietnam's sovereignty</p>
                     </div>
                     
-                    <div class="island-box bottom-16 right-8 text-sm">
+                    <div class="island-box top-16 right-8 text-sm">
                         <h3 class="font-bold text-indigo-800">Trường Sa Islands</h3>
                         <p class="text-gray-600">Part of Vietnam's sovereignty</p>
                     </div>
@@ -864,8 +866,10 @@
                     
                     // Position the tooltip near the mouse
                     const updateTooltipPosition = (e) => {
-                        const x = e.clientX + 15;
-                        const y = e.clientY + 15;
+                        console.log(e);
+                        
+                        const x = e.offsetX + 10;
+                        const y = e.offsetY + 10;
                         tooltip.style.left = `${x}px`;
                         tooltip.style.top = `${y}px`;
                     };
