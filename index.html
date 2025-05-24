@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Greenmart</title>
+        <title>Vietnam Travel Memories - All 63 Provinces</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
@@ -162,6 +162,50 @@
                 stroke: #64748b;
                 stroke-width: 0.3;
                 stroke-dasharray: 2,1;
+            }
+            
+            /* New styles for image thumbnails */
+            .image-thumbnail {
+                position: relative;
+                width: 100px;
+                height: 100px;
+                object-fit: cover;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+                transition: transform 0.2s;
+            }
+            
+            .image-thumbnail:hover {
+                transform: scale(1.05);
+            }
+            
+            .delete-image-btn {
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background: #ef4444;
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                cursor: pointer;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                transition: background 0.2s;
+            }
+            
+            .delete-image-btn:hover {
+                background: #dc2626;
+            }
+            
+            .image-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 10px;
+                margin-top: 16px;
             }
         </style>
     </head>
@@ -490,10 +534,10 @@
                         
                         <!-- Islands representation -->
                         <g id="islands">
-                            <circle cx="650" cy="500" r="25" class="province" id="hoang-sa"></circle>
+                            <circle cx="650" cy="500" r="20" class="province" id="hoang-sa"></circle>
                             <text x="650" y="500" text-anchor="middle" class="island-label">Hoàng Sa</text>
                             
-                            <circle cx="700" cy="800" r="25" class="province" id="truong-sa"></circle>
+                            <circle cx="700" cy="800" r="20" class="province" id="truong-sa"></circle>
                             <text x="700" y="800" text-anchor="middle" class="island-label">Trường Sa</text>
                         </g>
                     </svg>
@@ -538,7 +582,7 @@
                                 <label for="memory-text" class="block text-sm font-medium text-gray-700 mb-1">Your memories in <span id="selected-province-name" class="font-semibold text-indigo-700">Select a province</span>:</label>
                                 <textarea id="memory-text" rows="5" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"></textarea>
                             </div>
-                            <div class="flex justify-between">
+                            <div class="flex justify-between flex-wrap gap-2">
                                 <button id="save-memory" class="btn px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-md">
                                     <span class="flex items-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -547,6 +591,17 @@
                                         Save Memory
                                     </span>
                                 </button>
+                                <div class="flex items-center gap-2">
+                                    <input type="file" id="image-upload" accept="image/jpeg,image/png" class="hidden">
+                                    <button id="upload-image" class="btn px-5 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition shadow-md">
+                                        <span class="flex items-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                                            </svg>
+                                            Upload Picture
+                                        </span>
+                                    </button>
+                                </div>
                                 <button id="mark-visited" class="btn px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shadow-md">
                                     <span class="flex items-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -589,71 +644,71 @@
         <script>
             // Province data with names - all 63 provinces of Vietnam
             const provinceData = {
-                'ha-giang': { name: 'Hà Giang', visited: false, memory: '' },
-                'cao-bang': { name: 'Cao Bằng', visited: false, memory: '' },
-                'bac-kan': { name: 'Bắc Kạn', visited: false, memory: '' },
-                'lang-son': { name: 'Lạng Sơn', visited: false, memory: '' },
-                'tuyen-quang': { name: 'Tuyên Quang', visited: false, memory: '' },
-                'lao-cai': { name: 'Lào Cai', visited: false, memory: '' },
-                'yen-bai': { name: 'Yên Bái', visited: false, memory: '' },
-                'dien-bien': { name: 'Điện Biên', visited: false, memory: '' },
-                'lai-chau': { name: 'Lai Châu', visited: false, memory: '' },
-                'son-la': { name: 'Sơn La', visited: false, memory: '' },
-                'hoa-binh': { name: 'Hòa Bình', visited: false, memory: '' },
-                'thai-nguyen': { name: 'Thái Nguyên', visited: false, memory: '' },
-                'phu-tho': { name: 'Phú Thọ', visited: false, memory: '' },
-                'vinh-phuc': { name: 'Vĩnh Phúc', visited: false, memory: '' },
-                'bac-giang': { name: 'Bắc Giang', visited: false, memory: '' },
-                'quang-ninh': { name: 'Quảng Ninh', visited: false, memory: '' },
-                'bac-ninh': { name: 'Bắc Ninh', visited: false, memory: '' },
-                'hai-duong': { name: 'Hải Dương', visited: false, memory: '' },
-                'hanoi': { name: 'Hà Nội', visited: false, memory: '' },
-                'hung-yen': { name: 'Hưng Yên', visited: false, memory: '' },
-                'hai-phong': { name: 'Hải Phòng', visited: false, memory: '' },
-                'thai-binh': { name: 'Thái Bình', visited: false, memory: '' },
-                'ha-nam': { name: 'Hà Nam', visited: false, memory: '' },
-                'nam-dinh': { name: 'Nam Định', visited: false, memory: '' },
-                'ninh-binh': { name: 'Ninh Bình', visited: false, memory: '' },
-                'thanh-hoa': { name: 'Thanh Hóa', visited: false, memory: '' },
-                'nghe-an': { name: 'Nghệ An', visited: false, memory: '' },
-                'ha-tinh': { name: 'Hà Tĩnh', visited: false, memory: '' },
-                'quang-binh': { name: 'Quảng Bình', visited: false, memory: '' },
-                'quang-tri': { name: 'Quảng Trị', visited: false, memory: '' },
-                'thua-thien-hue': { name: 'Thừa Thiên Huế', visited: false, memory: '' },
-                'da-nang': { name: 'Đà Nẵng', visited: false, memory: '' },
-                'quang-nam': { name: 'Quảng Nam', visited: false, memory: '' },
-                'quang-ngai': { name: 'Quảng Ngãi', visited: false, memory: '' },
-                'binh-dinh': { name: 'Bình Định', visited: false, memory: '' },
-                'phu-yen': { name: 'Phú Yên', visited: false, memory: '' },
-                'khanh-hoa': { name: 'Khánh Hòa', visited: false, memory: '' },
-                'ninh-thuan': { name: 'Ninh Thuận', visited: false, memory: '' },
-                'binh-thuan': { name: 'Bình Thuận', visited: false, memory: '' },
-                'kon-tum': { name: 'Kon Tum', visited: false, memory: '' },
-                'gia-lai': { name: 'Gia Lai', visited: false, memory: '' },
-                'dak-lak': { name: 'Đắk Lắk', visited: false, memory: '' },
-                'dak-nong': { name: 'Đắk Nông', visited: false, memory: '' },
-                'lam-dong': { name: 'Lâm Đồng', visited: false, memory: '' },
-                'binh-phuoc': { name: 'Bình Phước', visited: false, memory: '' },
-                'tay-ninh': { name: 'Tây Ninh', visited: false, memory: '' },
-                'binh-duong': { name: 'Bình Dương', visited: false, memory: '' },
-                'dong-nai': { name: 'Đồng Nai', visited: false, memory: '' },
-                'ba-ria-vung-tau': { name: 'Bà Rịa - Vũng Tàu', visited: false, memory: '' },
-                'ho-chi-minh': { name: 'TP. Hồ Chí Minh', visited: false, memory: '' },
-                'long-an': { name: 'Long An', visited: false, memory: '' },
-                'tien-giang': { name: 'Tiền Giang', visited: false, memory: '' },
-                'ben-tre': { name: 'Bến Tre', visited: false, memory: '' },
-                'tra-vinh': { name: 'Trà Vinh', visited: false, memory: '' },
-                'vinh-long': { name: 'Vĩnh Long', visited: false, memory: '' },
-                'dong-thap': { name: 'Đồng Tháp', visited: false, memory: '' },
-                'an-giang': { name: 'An Giang', visited: false, memory: '' },
-                'kien-giang': { name: 'Kiên Giang', visited: false, memory: '' },
-                'can-tho': { name: 'Cần Thơ', visited: false, memory: '' },
-                'hau-giang': { name: 'Hậu Giang', visited: false, memory: '' },
-                'soc-trang': { name: 'Sóc Trăng', visited: false, memory: '' },
-                'bac-lieu': { name: 'Bạc Liêu', visited: false, memory: '' },
-                'ca-mau': { name: 'Cà Mau', visited: false, memory: '' },
-                'hoang-sa': { name: 'Hoàng Sa', visited: false, memory: '' },
-                'truong-sa': { name: 'Trường Sa', visited: false, memory: '' }
+                'ha-giang': { name: 'Hà Giang', visited: false, memory: '', images: [] },
+                'cao-bang': { name: 'Cao Bằng', visited: false, memory: '', images: [] },
+                'bac-kan': { name: 'Bắc Kạn', visited: false, memory: '', images: [] },
+                'lang-son': { name: 'Lạng Sơn', visited: false, memory: '', images: [] },
+                'tuyen-quang': { name: 'Tuyên Quang', visited: false, memory: '', images: [] },
+                'lao-cai': { name: 'Lào Cai', visited: false, memory: '', images: [] },
+                'yen-bai': { name: 'Yên Bái', visited: false, memory: '', images: [] },
+                'dien-bien': { name: 'Điện Biên', visited: false, memory: '', images: [] },
+                'lai-chau': { name: 'Lai Châu', visited: false, memory: '', images: [] },
+                'son-la': { name: 'Sơn La', visited: false, memory: '', images: [] },
+                'hoa-binh': { name: 'Hòa Bình', visited: false, memory: '', images: [] },
+                'thai-nguyen': { name: 'Thái Nguyên', visited: false, memory: '', images: [] },
+                'phu-tho': { name: 'Phú Thọ', visited: false, memory: '', images: [] },
+                'vinh-phuc': { name: 'Vĩnh Phúc', visited: false, memory: '', images: [] },
+                'bac-giang': { name: 'Bắc Giang', visited: false, memory: '', images: [] },
+                'quang-ninh': { name: 'Quảng Ninh', visited: false, memory: '', images: [] },
+                'bac-ninh': { name: 'Bắc Ninh', visited: false, memory: '', images: [] },
+                'hai-duong': { name: 'Hải Dương', visited: false, memory: '', images: [] },
+                'hanoi': { name: 'Hà Nội', visited: false, memory: '', images: [] },
+                'hung-yen': { name: 'Hưng Yên', visited: false, memory: '', images: [] },
+                'hai-phong': { name: 'Hải Phòng', visited: false, memory: '', images: [] },
+                'thai-binh': { name: 'Thái Bình', visited: false, memory: '', images: [] },
+                'ha-nam': { name: 'Hà Nam', visited: false, memory: '', images: [] },
+                'nam-dinh': { name: 'Nam Định', visited: false, memory: '', images: [] },
+                'ninh-binh': { name: 'Ninh Bình', visited: false, memory: '', images: [] },
+                'thanh-hoa': { name: 'Thanh Hóa', visited: false, memory: '', images: [] },
+                'nghe-an': { name: 'Nghệ An', visited: false, memory: '', images: [] },
+                'ha-tinh': { name: 'Hà Tĩnh', visited: false, memory: '', images: [] },
+                'quang-binh': { name: 'Quảng Bình', visited: false, memory: '', images: [] },
+                'quang-tri': { name: 'Quảng Trị', visited: false, memory: '', images: [] },
+                'thua-thien-hue': { name: 'Thừa Thiên Huế', visited: false, memory: '', images: [] },
+                'da-nang': { name: 'Đà Nẵng', visited: false, memory: '', images: [] },
+                'quang-nam': { name: 'Quảng Nam', visited: false, memory: '', images: [] },
+                'quang-ngai': { name: 'Quảng Ngãi', visited: false, memory: '', images: [] },
+                'binh-dinh': { name: 'Bình Định', visited: false, memory: '', images: [] },
+                'phu-yen': { name: 'Phú Yên', visited: false, memory: '', images: [] },
+                'khanh-hoa': { name: 'Khánh Hòa', visited: false, memory: '', images: [] },
+                'ninh-thuan': { name: 'Ninh Thuận', visited: false, memory: '', images: [] },
+                'binh-thuan': { name: 'Bình Thuận', visited: false, memory: '', images: [] },
+                'kon-tum': { name: 'Kon Tum', visited: false, memory: '', images: [] },
+                'gia-lai': { name: 'Gia Lai', visited: false, memory: '', images: [] },
+                'dak-lak': { name: 'Đắk Lắk', visited: false, memory: '', images: [] },
+                'dak-nong': { name: 'Đắk Nông', visited: false, memory: '', images: [] },
+                'lam-dong': { name: 'Lâm Đồng', visited: false, memory: '', images: [] },
+                'binh-phuoc': { name: 'Bình Phước', visited: false, memory: '', images: [] },
+                'tay-ninh': { name: 'Tây Ninh', visited: false, memory: '', images: [] },
+                'binh-duong': { name: 'Bình Dương', visited: false, memory: '', images: [] },
+                'dong-nai': { name: 'Đồng Nai', visited: false, memory: '', images: [] },
+                'ba-ria-vung-tau': { name: 'Bà Rịa - Vũng Tàu', visited: false, memory: '', images: [] },
+                'ho-chi-minh': { name: 'TP. Hồ Chí Minh', visited: false, memory: '', images: [] },
+                'long-an': { name: 'Long An', visited: false, memory: '', images: [] },
+                'tien-giang': { name: 'Tiền Giang', visited: false, memory: '', images: [] },
+                'ben-tre': { name: 'Bến Tre', visited: false, memory: '', images: [] },
+                'tra-vinh': { name: 'Trà Vinh', visited: false, memory: '', images: [] },
+                'vinh-long': { name: 'Vĩnh Long', visited: false, memory: '', images: [] },
+                'dong-thap': { name: 'Đồng Tháp', visited: false, memory: '', images: [] },
+                'an-giang': { name: 'An Giang', visited: false, memory: '', images: [] },
+                'kien-giang': { name: 'Kiên Giang', visited: false, memory: '', images: [] },
+                'can-tho': { name: 'Cần Thơ', visited: false, memory: '', images: [] },
+                'hau-giang': { name: 'Hậu Giang', visited: false, memory: '', images: [] },
+                'soc-trang': { name: 'Sóc Trăng', visited: false, memory: '', images: [] },
+                'bac-lieu': { name: 'Bạc Liêu', visited: false, memory: '', images: [] },
+                'ca-mau': { name: 'Cà Mau', visited: false, memory: '', images: [] },
+                'hoang-sa': { name: 'Hoàng Sa', visited: false, memory: '', images: [] },
+                'truong-sa': { name: 'Trường Sa', visited: false, memory: '', images: [] }
             };
     
             // Populate the province list
@@ -791,7 +846,6 @@
                                 ${province.visited ? 'Visited' : 'Not visited yet'}
                             </span>
                         </div>
-                        
                         <div class="h-px bg-gray-200 my-3"></div>
                 `;
                 
@@ -805,9 +859,35 @@
                     `;
                 }
                 
+                // Display images if any
+                if (province.images && province.images.length > 0) {
+                    infoHTML += `
+                        <div class="mt-4">
+                            <h4 class="font-bold text-indigo-700 mb-2">Your Pictures:</h4>
+                            <div class="image-grid">
+                                ${province.images.map((image, index) => `
+                                    <div class="relative">
+                                        <img src="${image}" class="image-thumbnail" alt="${province.name} picture">
+                                        <span class="delete-image-btn" data-province="${provinceId}" data-index="${index}">&times;</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
                 infoHTML += `</div>`;
                 
                 provinceInfo.innerHTML = infoHTML;
+                
+                // Add event listeners for delete image buttons
+                document.querySelectorAll('.delete-image-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const provinceId = this.getAttribute('data-province');
+                        const index = parseInt(this.getAttribute('data-index'));
+                        deleteImage(provinceId, index);
+                    });
+                });
                 
                 // Show the memory form and update the selected province name
                 document.getElementById('memory-form').classList.remove('hidden');
@@ -886,6 +966,86 @@
                     this.removeEventListener('mousemove', null);
                 });
             });
+    
+            // Function to handle image upload
+            function handleImageUpload(event) {
+                if (!selectedProvinceId) return;
+                
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                // Validate file type
+                if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                    alert('Please upload a JPEG or PNG image.');
+                    return;
+                }
+                
+                // Validate file size (e.g., max 2MB)
+                const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+                if (file.size > maxSize) {
+                    alert('Image size must be less than 2MB.');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;
+                    provinceData[selectedProvinceId].images.push(base64Image);
+                    provinceData[selectedProvinceId].lastUpdated = Date.now();
+                    
+                    // Update UI
+                    selectProvince(selectedProvinceId);
+                    saveData();
+                    
+                    // Show confirmation
+                    const uploadButton = document.getElementById('upload-image');
+                    uploadButton.classList.add('bg-green-600');
+                    uploadButton.innerHTML = `
+                        <span class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Uploaded!
+                        </span>
+                    `;
+                    
+                    setTimeout(() => {
+                        uploadButton.classList.remove('bg-green-600');
+                        uploadButton.innerHTML = `
+                            <span class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                                </svg>
+                                Upload Picture
+                            </span>
+                        `;
+                    }, 2000);
+                    
+                    // Reset file input
+                    event.target.value = '';
+                };
+                reader.readAsDataURL(file);
+            }
+    
+            // Function to delete an image
+            function deleteImage(provinceId, index) {
+                if (confirm('Are you sure you want to delete this picture?')) {
+                    provinceData[provinceId].images.splice(index, 1);
+                    provinceData[provinceId].lastUpdated = Date.now();
+                    
+                    // Update UI
+                    selectProvince(provinceId);
+                    saveData();
+                }
+            }
+    
+            // Event listener for image upload button
+            document.getElementById('upload-image').addEventListener('click', function() {
+                document.getElementById('image-upload').click();
+            });
+    
+            // Event listener for file input
+            document.getElementById('image-upload').addEventListener('change', handleImageUpload);
     
             // Save memory button click handler
             document.getElementById('save-memory').addEventListener('click', function() {
